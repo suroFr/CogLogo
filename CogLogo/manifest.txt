@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Extension-Name: CogLogo
+Class-Manager: src.CognitonExtension
+NetLogo-Extension-API-Version: 6.0
