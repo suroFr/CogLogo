@@ -1,9 +1,0 @@
-## CogLogo
-
-_by François Suro_ (suro@lirmm.fr)
-
-Provides a NetLogo implementation of the Cogniton architecture, which focuses on the design of multiagent simulations of complex socio-cognitive systems. 
-
-* [info](https://github.com/suroFr/CogLogo/blob/master/readMe.txt)
-* [download](https://github.com/suroFr/CogLogo/tree/master/Dists)
-* [source](https://github.com/suroFr/CogLogo/tree/master/CogLogo)
