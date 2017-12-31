@@ -16,9 +16,9 @@
 
 package src.editor;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
@@ -31,6 +31,8 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.event.MouseInputListener;
 
 import src.CognitiveScheme;
 
@@ -46,6 +48,8 @@ public class CognitiveStructurePanel extends JPanel{
 	int planCount = 0;
 	double zoomLevel = 1.0;
 	
+
+	public CognitiveScheme currentCognitiveScheme = null;
 	protected ArrayList<GCogniton> gCognitons = new ArrayList<>();
 	protected HashMap<String,GPlan> gPlan = new HashMap<String, GPlan>();
 	protected ArrayList<GLink> gLiens = new ArrayList<>();
@@ -53,7 +57,7 @@ public class CognitiveStructurePanel extends JPanel{
 	protected ArrayList<GLink> gLiensConditionnels = new ArrayList<>();
 	protected ArrayList<GLabel> gLabels = new ArrayList<>();
 
-	JPanel panelPrincipal;
+	JPanel mainPanel;
 	JPopupMenu popupGPlans;
 	JPopupMenu popupGCognitons;
 	JLabel currenCog = new JLabel("No Cognitive Scheme");
@@ -62,8 +66,25 @@ public class CognitiveStructurePanel extends JPanel{
 	private double mPrevY =0;
 	boolean rightClick = false;
 	boolean leftClick = false;
-	
+	/*
+	int refreshMinTime = 50;
+	Timer refreshTimer = new Timer(refreshMinTime, new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			superRevalidate();
+			refreshTimer.stop();
+		}
+	});
+	*/
 	public JComponent selectedElement = null;
+	
+	boolean displayInfluenceLink = true;
+	boolean displayConditionalLink = true;
+	boolean displayReinforcementLink = true;
+	boolean displayCustomColor = true;
+	boolean mouseIn = false;
+	long prevUpdateTime = 0;
+	long prevUpdateTimer = 0;
 	
 	public CognitiveStructurePanel()
 	{
@@ -73,29 +94,28 @@ public class CognitiveStructurePanel extends JPanel{
         toolBar.setFloatable(false);
         toolBar.setRollover(true);
         toolBar.add(Box.createHorizontalGlue());
-		this.addMouseMotionListener(new MouseMotionListener() {
-			@Override
+        MouseInputListener mouseListener = new MouseInputListener() {
+        	@Override
 			public void mouseMoved(MouseEvent e) {}			
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				if(leftClick)
+				if(leftClick && System.currentTimeMillis() - prevUpdateTime > 60)
 				{
-					offsetX +=(e.getX()-mPrevX)/zoomLevel;
-					offsetY +=(e.getY()-mPrevY)/zoomLevel;
-					mPrevX = e.getX();
-					mPrevY = e.getY();
-					panelAdress.repaint();
-					panelAdress.revalidate();					
+						prevUpdateTime = System.currentTimeMillis();
+						offsetX +=(e.getX()-mPrevX)/zoomLevel;
+						offsetY +=(e.getY()-mPrevY)/zoomLevel;
+						mPrevX = e.getX();
+						mPrevY = e.getY();
+						panelAdress.repaint();
+						panelAdress.revalidate();	
 				}				
 			}
-		});
-		this.addMouseListener(new MouseListener() {	
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				if(SwingUtilities.isRightMouseButton(e) || (SwingUtilities.isLeftMouseButton(e)&&e.isControlDown()))
-					rightClick = true;
+					rightClick = false;
 				else if(SwingUtilities.isLeftMouseButton(e))
-					leftClick = true;
+					leftClick = false;
 			}			
 			@Override
 			public void mousePressed(MouseEvent e) {
@@ -107,9 +127,13 @@ public class CognitiveStructurePanel extends JPanel{
 					leftClick = true;
 			}			
 			@Override
-			public void mouseExited(MouseEvent e) {}
+			public void mouseExited(MouseEvent e) {
+				mouseIn = false;
+			}
 			@Override
-			public void mouseEntered(MouseEvent e) {}
+			public void mouseEntered(MouseEvent e) {
+				mouseIn = true;
+			}
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if(SwingUtilities.isRightMouseButton(e) || (SwingUtilities.isLeftMouseButton(e)&&e.isControlDown()))
@@ -117,7 +141,10 @@ public class CognitiveStructurePanel extends JPanel{
 				else
 					switchSelectedElement(null);
 			}
-		});
+		};
+		this.addMouseListener(mouseListener);
+		this.addMouseMotionListener(mouseListener);
+		
 		this.addMouseWheelListener(new MouseWheelListener() {
 			@Override
 			public void mouseWheelMoved(MouseWheelEvent e) {
@@ -142,33 +169,44 @@ public class CognitiveStructurePanel extends JPanel{
 			if(selectedElement.getClass().equals(GCogniton.class))
 			{
 				GCogniton cog = (GCogniton) selectedElement;
-				for(String dPlan : cog.cogniton.influencelinks.keySet())
+				if(displayInfluenceLink)
 				{
-					GPlan target = gPlan.get(dPlan);
-					if(target != null)
-						makeGLab(cog,target,cog.cogniton.influencelinks.get(dPlan),0.66);
+					for(String dPlan : cog.cogniton.influencelinks.keySet())
+					{
+						GPlan target = gPlan.get(dPlan);
+						if(target != null)
+							makeGLab(cog,target,cog.cogniton.influencelinks.get(dPlan),0.66);
+					}
 				}
-				for(String dPlan : cog.cogniton.feedBackLinks.keySet())
+				if(displayReinforcementLink)
 				{
-					GPlan target = gPlan.get(dPlan);
-					if(target != null)
-						makeGLab(cog,target,cog.cogniton.feedBackLinks.get(dPlan),0.33);
+					for(String dPlan : cog.cogniton.feedBackLinks.keySet())
+					{
+						GPlan target = gPlan.get(dPlan);
+						if(target != null)
+							makeGLab(cog,target,cog.cogniton.feedBackLinks.get(dPlan),0.33);
+					}
 				}
 			}
 			else if(selectedElement.getClass().equals(GPlan.class))
 			{
 				GPlan pl = (GPlan) selectedElement;
-				for(GLink l : gLiens)
+				if(displayInfluenceLink)
 				{
-					if(l.plan.equals(pl))
-						makeGLab(l.cogniton,pl,l.cogniton.cogniton.influencelinks.get(pl.plan),0.66);
+					for(GLink l : gLiens)
+					{
+						if(l.plan.equals(pl))
+							makeGLab(l.cogniton,pl,l.cogniton.cogniton.influencelinks.get(pl.plan),0.66);
+					}					
 				}
-				for(GLink l : gLiensReinf)
+				if(displayReinforcementLink)
 				{
-					if(l.plan.equals(pl))
-						makeGLab(l.cogniton,pl,l.cogniton.cogniton.feedBackLinks.get(pl.plan),0.33);
+					for(GLink l : gLiensReinf)
+					{
+						if(l.plan.equals(pl))
+							makeGLab(l.cogniton,pl,l.cogniton.cogniton.feedBackLinks.get(pl.plan),0.33);
+					}					
 				}
-
 			}			
 		}
 		displayGStructure();
@@ -182,7 +220,7 @@ public class CognitiveStructurePanel extends JPanel{
 
 	public CognitiveStructurePanel(JPanel panelPrincipal) {
 		this();
-		this.panelPrincipal = panelPrincipal;
+		this.mainPanel = panelPrincipal;
 	}
 
 	protected void clearDisplayAndData() {
@@ -209,7 +247,8 @@ public class CognitiveStructurePanel extends JPanel{
 			GPlan target = gPlan.get(dPlan);
 			if(target == null)
 				target = displayPlan(dPlan, espaceCognitonsPlans,40+espacement*planCount);
-			makeGLinkInfluence(cur,target,c.influencelinks.get(dPlan));
+			if(displayInfluenceLink)
+				makeGLinkInfluence(cur,target,c.influencelinks.get(dPlan));
 		}
 		
 		for(String dPlan : c.dependencyLinks)
@@ -217,7 +256,8 @@ public class CognitiveStructurePanel extends JPanel{
 			GPlan target = gPlan.get(dPlan);
 			if(target == null)
 				target = displayPlan(dPlan, espaceCognitonsPlans,40+espacement*planCount);
-			makeGLinkConditional(cur,target);
+			if(displayConditionalLink)
+				makeGLinkConditional(cur,target);
 		}
 		
 		for(String dPlan : c.feedBackLinks.keySet())
@@ -225,7 +265,8 @@ public class CognitiveStructurePanel extends JPanel{
 			GPlan target = gPlan.get(dPlan);
 			if(target == null)
 				target = displayPlan(dPlan, espaceCognitonsPlans,40+espacement*planCount);
-			makeGLinkReinforcement(cur,target,c.feedBackLinks.get(dPlan));
+			if(displayReinforcementLink)
+				makeGLinkReinforcement(cur,target,c.feedBackLinks.get(dPlan));
 		}
 	}
 	
@@ -290,23 +331,32 @@ public class CognitiveStructurePanel extends JPanel{
 			this.setComponentZOrder(p, i);
 			i++;
 		}
-		for(GLink l : gLiensConditionnels)
+		if(displayConditionalLink)
 		{
-			this.add(l);
-			this.setComponentZOrder(l,i);
-			i++;
+			for(GLink l : gLiensConditionnels)
+			{
+				this.add(l);
+				this.setComponentZOrder(l,i);
+				i++;
+			}			
 		}
-		for(GLink l : gLiens)
+		if(displayInfluenceLink)
 		{
-			this.add(l);
-			this.setComponentZOrder(l,i);
-			i++;
+			for(GLink l : gLiens)
+			{
+				this.add(l);
+				this.setComponentZOrder(l,i);
+				i++;
+			}			
 		}
-		for(GLink l : gLiensReinf)
+		if(displayReinforcementLink)
 		{
-			this.add(l);
-			this.setComponentZOrder(l,i);
-			i++;
+			for(GLink l : gLiensReinf)
+			{
+				this.add(l);
+				this.setComponentZOrder(l,i);
+				i++;
+			}			
 		}
 	}
 	
@@ -317,7 +367,11 @@ public class CognitiveStructurePanel extends JPanel{
 		
 
 	public GPlan displayPlan(String p , double posX , double posY){
-		GPlan curr = MakeGPlan(p, posX, posY);
+		GPlan curr;
+		if (currentCognitiveScheme.planSavedPosition.get(p) != null)
+			curr = MakeGPlan(p, currentCognitiveScheme.planSavedPosition.get(p).x, currentCognitiveScheme.planSavedPosition.get(p).y);
+		else
+			curr = MakeGPlan(p, posX, posY);
 		gPlan.put(p,curr);
 		planCount++;
 		return curr;
@@ -346,5 +400,26 @@ public class CognitiveStructurePanel extends JPanel{
 	public void displayGeneralPopup(MouseEvent e){
 		
 	}
+		
+	/*
+	@Override
+	public void revalidate()
+	{
+		if(System.currentTimeMillis()-prevUpdateTimer > refreshMinTime)
+		{		
+			if(refreshTimer != null)
+			{
+				refreshTimer.start();
+				prevUpdateTimer = System.currentTimeMillis();				
+			}
+			else
+				superRevalidate();
+		}		
+	}	
 
+	public void superRevalidate()
+	{
+		super.revalidate();
+	}
+	*/
 }

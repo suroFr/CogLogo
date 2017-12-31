@@ -18,6 +18,7 @@
 package src;
 
 import java.awt.Color;
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -41,6 +42,8 @@ public class CognitiveScheme {
 	public static final String[] DecisionMakers  = new String[] {"MaximumWeight", "WeightedStochastic", "BiasedWeightedStochastic"};
 
 	public ArrayList<String> linkedBreeds = new ArrayList<>();
+	
+	public HashMap<String, Point> planSavedPosition = new HashMap<>();
 	
 	
 	public CognitiveScheme() {	}
@@ -355,6 +358,8 @@ public class CognitiveScheme {
 		public boolean starting = false;
 		public boolean isCulturon = false;
 		public double startingValue = 0.0;
+		public Integer posX = null;
+		public Integer posY = null;
 		
 		public Cogniton(String name)
 		{
@@ -493,6 +498,8 @@ public class CognitiveScheme {
 				ret += "ROL\n" + roleNames.get(r) + "\n";
 				for (Cogniton c : culturons.get(r)) {
 					ret +="COG\n" + c.Name + "\n" + Integer.toString(c.customColor.getRGB()) + "\n"+ Double.toString(c.startingValue) + "\n";
+					if(c.posX != null)
+						ret +=Integer.toString(c.posX)+":"+Integer.toString(c.posY)+ "\n";
 					ret += "INFLUENCE\n";
 					for (String inf : c.influencelinks.keySet())
 						ret += inf + "=" + c.influencelinks.get(inf).toString() + "\n";

@@ -1,7 +1,8 @@
 extensions [CogLogo]
 breed [humans human]
 humans-own [currentplan planTimer myLand landSpacing wheatStock toolStock toolState]
-globals [ toolDemand wheatDemand villageToolStock villageWheatStock planDuration ]
+patches-own [toolProduction wheatProduction]
+globals [ toolDemand wheatDemand villageToolStock villageWheatStock planDuration demandPerception startingVillageToolStock]
 
 to setup
   clear-all
@@ -9,24 +10,32 @@ to setup
 
   set toolDemand 0
   set wheatDemand 0
-  set villageToolStock 50
-  set villageWheatStock 1500
-  set planDuration 30
+  set startingVillageToolStock 50
+  set villageToolStock startingVillageToolStock
+  set villageWheatStock startingVillageToolStock * baseToolPrice
+  set planDuration 40
+  set demandPerception 0
+
   coglogo:reset-simulation
 
   create-humans nHumans [
     coglogo:init-cognitons
     set shape "person"
     set color white
-    set size 2
+    set size 1.2
     setxy random-xcor random-ycor
     set myLand nobody
-    set toolStock 0
-    set wheatStock 800
+    set toolStock 10
+    set wheatStock 5 * baseToolPrice
     set toolState 0
     set landSpacing 20
     set planTimer 0
     set label who
+  ]
+
+  ask patches [
+    set toolProduction 12700
+    set wheatProduction 12800
   ]
 
   ask patches with [pxcor < 2 and pxcor > -2 and pycor < 2 and pycor > -2 ][
@@ -35,10 +44,7 @@ to setup
 end
 
 to go
-  let delta (villageWheatStock - (villageToolStock * toolPrice)) * 0.0001
-  set wheatDemand wheatDemand - delta
-  set toolDemand toolDemand + delta
-
+  set demandPerception ((villageWheatStock - (villageToolStock * baseToolPrice)) / (startingVillageToolStock * baseToolPrice))
   ask humans [goHuman]
   set wheatDemand wheatDemand * .99
   set toolDemand toolDemand * .99
@@ -47,42 +53,81 @@ to go
 end
 
 to goHuman
-  coglogo:set-cogniton-value "WheatDemand" wheatDemand
-  coglogo:set-cogniton-value "ToolDemand" toolDemand
-  coglogo:set-cogniton-value "WheatStock" wheatStock
-  coglogo:set-cogniton-value "ToolStock" toolStock
-  coglogo:set-cogniton-value "WheatNeed" (800 - wheatStock)
+  regulatePerceptionCogniton
+  regulateSpecialisationCogniton
   coglogo:report-agent-data
   if wheatStock < 0
-  [set color grey
+  [
+    set color grey
     if myLand != nobody
     [ask myLand [set pcolor gray]]
     if starvation?
     [die]
   ]
-  ifelse planTimer = 0
-  [set currentPlan coglogo:choose-next-plan
-  set planTimer planDuration
-  set wheatStock wheatStock * (1.0 - foodDecay)
-  run currentPlan]
-  [set planTimer planTimer - 1
-  run currentPlan]
+  ifelse planTimer <= 0
+  [
+    set currentPlan coglogo:choose-next-plan
+    set planTimer planDuration
+    run currentPlan
+    set wheatStock wheatStock * (1.0 - foodDecay)
+  ]
+  [
+    set planTimer planTimer - 1
+    run currentPlan
+  ]
+
+end
+
+to regulateSpecialisationCogniton
+  let artVal coglogo:get-cogniton-value "Artisan"
+  let farmVal coglogo:get-cogniton-value "Farmer"
+  coglogo:set-cogniton-value "Farmer" (farmVal * 0.999999)
+  coglogo:set-cogniton-value "Artisan" (artVal * 0.999999)
+  if farmVal > 30
+  [coglogo:set-cogniton-value "Farmer" 30]
+  if farmVal < -30
+  [coglogo:set-cogniton-value "Farmer" -30]
+  if artVal > 30
+  [coglogo:set-cogniton-value "Artisan" 30]
+  if artVal < -30
+  [coglogo:set-cogniton-value "Artisan" -30]
+  ;alternative regulation
+  ;coglogo:set-cogniton-value "Farmer" ((coglogo:get-cogniton-value "Farmer") * 0.999989)
+  ;coglogo:set-cogniton-value "Artisan" ((coglogo:get-cogniton-value "Artisan") * 0.999989)
+end
+
+to regulatePerceptionCogniton
+  coglogo:set-cogniton-value "WheatDemand" wheatDemand
+  coglogo:set-cogniton-value "ToolDemand" toolDemand
+  coglogo:set-cogniton-value "WheatStock" wheatStock
+  coglogo:set-cogniton-value "ToolStock" toolStock
+  coglogo:set-cogniton-value "WheatNeed" ((800 ) - wheatStock)
 end
 
 to TradeWheatForTools
-  if villageToolStock > 1
-  [ifelse patch-here = patch 0 0
+  ifelse villageToolStock > 1
+  [
+    ifelse patch-here = patch 0 0
     [
      set villageToolStock villageToolStock - 1
-     set villageWheatStock villageWheatStock + (1 * toolPrice)
+     set villageWheatStock villageWheatStock + (1 * baseToolPrice)
      set toolStock toolStock + 1
-     set wheatStock wheatStock - (1 * toolPrice)
+     set wheatStock wheatStock - (1 * baseToolPrice)
      coglogo:feed-back-from-plan "TradeWheatForTools" random-float 10
      coglogo:activate-cogniton "ToolStock"
+     set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
+     set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
      set planTimer 0
     ]
-    [face patch 0 0
-    fd 1]
+    [
+      face patch 0 0
+      fd 1
+    ]
+  ]
+  [
+    set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
+    set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
+    set planTimer 0
   ]
   set color yellow
 end
@@ -90,18 +135,30 @@ end
 to TradeToolsForWheat
   ifelse toolStock >= 1
   [
-  if villageWheatStock > (1 * toolPrice)
-  [ifelse patch-here = patch 0 0
-    [set color sky
-     set planTimer 0
-     set villageWheatStock villageWheatStock - (1 * toolPrice)
-     set villageToolStock villageToolStock + 1
-     set toolStock toolStock - 1
-     set wheatStock wheatStock + (1 * toolPrice)
-     coglogo:feed-back-from-plan "TradeToolsForWheat" random-float 10
+    ifelse villageWheatStock > (1 * baseToolPrice)
+    [
+      ifelse patch-here = patch 0 0
+      [
+        set color sky
+        set planTimer 0
+        set villageWheatStock villageWheatStock - (1 * baseToolPrice)
+        set villageToolStock villageToolStock + 1
+        set toolStock toolStock - 1
+        set wheatStock wheatStock + (1 * baseToolPrice)
+        coglogo:feed-back-from-plan "TradeToolsForWheat" random-float 10
+        set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
+        set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
+      ]
+      [
+        goToVillage
+
+      ]
     ]
-    [face patch 0 0
-    fd 1]]
+    [
+      set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
+      set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
+      set planTimer 0
+    ]
   ]
   [
     if toolStock < 1
@@ -116,48 +173,95 @@ to GrowWheat
   ifelse myLand = nobody
   [claimLand]
   [ifelse patch-here = myLand
-    [ifelse toolState > 0
-    [ set wheatStock wheatStock + random 8.0
-      set toolState toolState - 1]
-    [ set wheatStock wheatStock + random 3.0]
-    if toolState <= 0 and toolStock > 0.999
-    [ set toolState toolDurability
-      set toolStock toolStock - 1]
-      ask myLand [set pcolor sky]
+    [
+      ifelse toolState > 0
+      [ set wheatStock wheatStock + random 8.0
+        set toolState toolState - 1
+      ]
+      [ set wheatStock wheatStock + random 3.0]
+      if toolState <= 0 and toolStock > 0.999
+      [ set toolState toolDurability
+        set toolStock toolStock - 1]
+      ask myLand [patchColorWheat]
       set planTimer 0
     ]
-    [goToLand]]
+    [goToLand]
+  ]
 end
 
 to ProduceTools
   set color red
   ifelse myLand = nobody
   [claimLand]
-  [ifelse patch-here = myLand
-    [set toolStock toolStock + random-float 0.02
+  [
+    ifelse patch-here = myLand
+    [set toolStock toolStock + random-float maxToolProductionSpeed
       if toolStock >= 1
       [coglogo:activate-cogniton "ToolStock"]
-      ask myLand [set pcolor pink]
+      ask myLand [patchColorTool]
       set planTimer 0
     ]
-    [goToLand]]
+    [goToLand]
+  ]
 end
 
 to claimLand
   ifelse any? patches in-radius landSpacing with [pcolor != black]
-  [ wiggle
+  [
+    wiggle
     set landSpacing landSpacing - 0.5
     if landSpacing <= 1
-      [set landSpacing 5]]
-  [ set myLand patch-here
-    ask myLand [set pcolor green
-   ]
-  set planTimer 0]
+    [set landSpacing 5]
+  ]
+  [
+    set myLand patch-here
+    ask myLand [set pcolor green]
+    set planTimer 0
+  ]
 end
 
 to goToLand
   face myLand
-  fd 0.8
+ ifelse distance myLand > 1
+  [
+      fd 1
+  ]
+  [
+    fd distance myLand
+  ]
+end
+
+to goToVillage
+  face patch 0 0
+  ifelse distance patch 0 0 > 1
+  [
+      fd 1
+  ]
+  [
+    fd distance patch 0 0
+  ]
+end
+
+to patchColorTool
+  set toolProduction toolProduction + 1
+  set wheatProduction wheatProduction - 1
+  if wheatProduction < 0
+  [set wheatProduction 0]
+  if toolProduction > 25500
+  [set toolProduction 25500]
+  set pcolor approximate-rgb (toolProduction / 100) 0 (wheatProduction / 100)
+  ;set pcolor approximate-rgb (toolProduction / 100) ((wheatProduction + toolProduction) / 200) (wheatProduction / 100)
+end
+
+to patchColorWheat
+  set toolProduction toolProduction - 1
+  set wheatProduction wheatProduction + 1
+  if toolProduction < 0
+  [set toolProduction 0]
+  if wheatProduction > 25500
+  [set wheatProduction 25500]
+  set pcolor approximate-rgb (toolProduction / 100) 0 (wheatProduction / 100)
+;  set pcolor approximate-rgb (toolProduction / 100) ((wheatProduction + toolProduction) / 200) (wheatProduction / 100)
 end
 
 to wiggle
@@ -167,13 +271,13 @@ to wiggle
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+226
 10
-647
-448
+665
+450
 -1
 -1
-13.0
+13.061
 1
 10
 1
@@ -247,23 +351,23 @@ NIL
 SLIDER
 10
 85
-185
+225
 118
 nHumans
 nHumans
 2
 50
-17.0
+25.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-655
+665
 10
-855
-160
+865
+130
 personalWheatStocks
 NIL
 NIL
@@ -278,10 +382,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [wheatStock] of humans"
 
 PLOT
-655
-160
-855
-310
+665
+130
+865
+250
 personalToolStock
 NIL
 NIL
@@ -296,10 +400,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot sum [toolStock] of humans"
 
 PLOT
-655
-310
-855
-460
+665
+250
+865
+370
 villageWheatStock
 NIL
 NIL
@@ -314,10 +418,10 @@ PENS
 "wheat" 1.0 0 -13345367 true "" "plot villageWheatStock"
 
 PLOT
-655
-460
-855
-610
+665
+370
+865
+500
 villageToolStock
 NIL
 NIL
@@ -333,14 +437,14 @@ PENS
 
 SLIDER
 10
-135
-185
-168
-toolPrice
-toolPrice
+280
+225
+313
+baseToolPrice
+baseToolPrice
 20
-200
-130.0
+600
+167.0
 1
 1
 NIL
@@ -348,24 +452,24 @@ HORIZONTAL
 
 SLIDER
 10
-205
-185
-238
+175
+225
+208
 foodDecay
 foodDecay
 0
 0.005
-0.001
-.00001
+0.003312
+.000001
 1
 NIL
 HORIZONTAL
 
 SWITCH
 10
-245
-185
-278
+130
+145
+163
 starvation?
 starvation?
 0
@@ -374,15 +478,56 @@ starvation?
 
 SLIDER
 10
-170
-185
-203
+210
+225
+243
 toolDurability
 toolDurability
 50
-400
-78.0
+600
+184.0
 1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+315
+225
+348
+baseDemandIntensity
+baseDemandIntensity
+0
+2
+1.01
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+155
+125
+225
+170
+pop
+count turtles
+17
+1
+11
+
+SLIDER
+10
+245
+225
+278
+maxToolProductionSpeed
+maxToolProductionSpeed
+0
+1
+0.076
+.001
 1
 NIL
 HORIZONTAL

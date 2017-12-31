@@ -22,10 +22,10 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
 import java.awt.geom.Ellipse2D;
 
 import javax.swing.JComponent;
+import javax.swing.event.MouseInputListener;
 
 import src.CognitiveScheme;
 
@@ -41,6 +41,7 @@ public class GCogniton extends JComponent{
 	int groupIndex = -1;
 	
 	String customMessage = "";
+	int clickX,clickY;
 	
 	public GCogniton(CognitiveStructurePanel parent , double x, double y, double w, double h, CognitiveScheme.Cogniton c) {
 		super();
@@ -48,17 +49,47 @@ public class GCogniton extends JComponent{
 		X = (int) x;
 		Y = (int) y;
 		panelAdress = parent;
-		this.addMouseMotionListener(new MouseMotionListener() {
+		MouseInputListener mouseListener = new MouseInputListener() {
 			@Override
 			public void mouseMoved(MouseEvent e) {}
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				X+=(e.getX()/panelAdress.zoomLevel);
-				Y+=(e.getY()/panelAdress.zoomLevel);
-				panelAdress.repaint();
-				panelAdress.revalidate();
+				if(panelAdress.mouseIn && System.currentTimeMillis() - panelAdress.prevUpdateTime > 10)
+				{
+					panelAdress.prevUpdateTime = System.currentTimeMillis();
+					X+=((e.getXOnScreen()- clickX)/panelAdress.zoomLevel);
+					Y+=((e.getYOnScreen()- clickY)/panelAdress.zoomLevel);	
+					clickX = e.getXOnScreen();
+					clickY = e.getYOnScreen();
+					panelAdress.repaint();
+					//panelAdress.revalidate();
+				}
 			}
-		});
+			@Override
+			public void mouseClicked(MouseEvent e) {
+			}
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				panelAdress.mouseIn = true;
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				panelAdress.mouseIn = false;
+			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				clickX = e.getXOnScreen();
+				clickY = e.getYOnScreen();
+				panelAdress.setComponentZOrder(e.getComponent(),0);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {	
+				//panelAdress.repaint();
+				//panelAdress.revalidate();			
+			}
+		};
+		this.addMouseListener(mouseListener);
+		this.addMouseMotionListener(mouseListener);
 		cognitonFont = new Font("default", Font.BOLD, 15);
 		this.DisplayCustomColor = true;
 		this.setVisible(true);
@@ -90,7 +121,7 @@ public class GCogniton extends JComponent{
     	sizeX = width + (2*margeEcriture);
     	sizeY = height;
     	
-    	if(DisplayCustomColor)
+    	if(panelAdress.displayCustomColor)
     		g2d.setColor(cogniton.getDisplayColor());
     	else
     	{

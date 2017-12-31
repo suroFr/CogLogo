@@ -31,6 +31,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.PopupMenuEvent;
@@ -248,6 +249,7 @@ public class AgentWatcher extends CognitiveStructurePanel{
 		if(ag != null)
 		{
 			CognitiveScheme cogScheme = CognitonExtension.cognitiveSchemes.get(ag.cogScheme);
+			currentCognitiveScheme = cogScheme;
 			cognitons = new HashMap<>();
 			plans = new HashMap<>();
 			groupInvolvment = new HashMap<String, Double>();
@@ -294,8 +296,13 @@ public class AgentWatcher extends CognitiveStructurePanel{
 			int space = 0;
 			planCount = 0;
 			for (CognitiveScheme.Cogniton c: cogScheme.cognitons){		
-				MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
-					space+=2;
+				if(c.posX == null)
+				{
+					MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
+					space+=2;					
+				}
+				else
+					MakeGCognitonAndLinkedElements(c,c.posX,c.posY);
 			}
 			for(int i = 0; i < cogScheme.groupNames.size(); i++)
 			{
@@ -303,8 +310,13 @@ public class AgentWatcher extends CognitiveStructurePanel{
 				{
 					for(Cogniton c : cogScheme.getCulturonsForGroupRole(cogScheme.groupNames.get(i), (String)ag.culturonsROLE.get((i))))
 					{
-						MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
-						space+=2;
+						if(c.posX == null)
+						{
+							MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
+							space+=2;					
+						}
+						else
+							MakeGCognitonAndLinkedElements(c,c.posX,c.posY);
 					}
 				}
 			}		
@@ -406,12 +418,40 @@ public class AgentWatcher extends CognitiveStructurePanel{
 		JMenuItem affichageCustom = new JMenuItem("Toggle Type colors");
 		affichageCustom.addActionListener(new ActionListener () {
 			public void actionPerformed(ActionEvent e) {
-				for( GCogniton gc : gCognitons)
-					gc.switchDisplayColor();
+				displayCustomColor = !displayCustomColor;
 				panelAdress.repaint();
 			}
 		});
 		popupGeneral.add(affichageCustom);
+		
+
+		JRadioButtonMenuItem influenceLink = new JRadioButtonMenuItem("Toggle Influence Link display");
+		influenceLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayInfluenceLink = !displayInfluenceLink;
+				displayAgent(agentValues.get(((AgentInfo) currentAgent.getSelectedItem()).id));
+			}
+		});
+		popupGeneral.add(influenceLink);
+		
+		JRadioButtonMenuItem conditionalLink = new JRadioButtonMenuItem("Toggle Conditional Link display");
+		conditionalLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayConditionalLink = !displayConditionalLink;
+				displayAgent(agentValues.get(((AgentInfo) currentAgent.getSelectedItem()).id));
+			}
+		});
+		popupGeneral.add(conditionalLink);
+		
+		JRadioButtonMenuItem reinforcementLink = new JRadioButtonMenuItem("Toggle Reinforcement Link display");
+		reinforcementLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayReinforcementLink = !displayReinforcementLink;
+				displayAgent(agentValues.get(((AgentInfo) currentAgent.getSelectedItem()).id));
+			}
+		});
+		popupGeneral.add(reinforcementLink);
+		
 		popupGeneral.show(this, (int)e.getX(), (int) e.getY());
 	}
 }

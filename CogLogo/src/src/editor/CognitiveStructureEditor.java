@@ -17,6 +17,7 @@
 package src.editor;
 
 import java.awt.Dimension;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -42,7 +43,6 @@ import src.myutils.MyButton;
 @SuppressWarnings("serial")
 public class CognitiveStructureEditor extends CognitiveStructurePanel {
 
-	public CognitiveScheme currentCognitiveScheme = null;
 	
 	public CognitiveStructureEditor(MainPanel mainPanel) {
 		super(mainPanel);
@@ -93,8 +93,13 @@ public class CognitiveStructureEditor extends CognitiveStructurePanel {
 		int space = 0;
 		planCount = 0;
 		for (CognitiveScheme.Cogniton c: currentCognitiveScheme.cognitons){		
-			MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
-				space++;
+			if(c.posX == null)
+			{
+				MakeGCognitonAndLinkedElements(c,80,40+espacement*space);
+				space+=2;					
+			}
+			else
+				MakeGCognitonAndLinkedElements(c,c.posX,c.posY);
 		}
 		displayGStructure();
 	}
@@ -174,15 +179,7 @@ public class CognitiveStructureEditor extends CognitiveStructurePanel {
 	
 	public void displayGeneralPopup(MouseEvent e){
 		JPopupMenu popupGeneral = new JPopupMenu(("Menu"));
-		JRadioButtonMenuItem affichageCustom = new JRadioButtonMenuItem("Toggle Type colors");
-		affichageCustom.addActionListener(new ActionListener () {
-			public void actionPerformed(ActionEvent e) {
-				for( GCogniton gc : gCognitons)
-					gc.switchDisplayColor();
-				panelAdress.repaint();
-			}
-		});
-		popupGeneral.add(affichageCustom);
+		
 		JMenuItem addCogniton = new JMenuItem("Add cogniton");
 		addCogniton.addActionListener(new ActionListener () {
 			public void actionPerformed(ActionEvent e) {
@@ -190,6 +187,74 @@ public class CognitiveStructureEditor extends CognitiveStructurePanel {
 			}
 		});
 		popupGeneral.add(addCogniton);
+		
+		JRadioButtonMenuItem customColor = new JRadioButtonMenuItem("Toggle Type colors");
+		customColor.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayCustomColor = !displayCustomColor;
+				panelAdress.repaint();
+			}
+		});
+		popupGeneral.add(customColor);
+
+		JRadioButtonMenuItem influenceLink = new JRadioButtonMenuItem("Toggle Influence Link display");
+		influenceLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayInfluenceLink = !displayInfluenceLink;
+				updateDisplayedElements();
+			}
+		});
+		popupGeneral.add(influenceLink);
+		
+		JRadioButtonMenuItem conditionalLink = new JRadioButtonMenuItem("Toggle Conditional Link display");
+		conditionalLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayConditionalLink = !displayConditionalLink;
+				updateDisplayedElements();
+			}
+		});
+		popupGeneral.add(conditionalLink);
+		
+		JRadioButtonMenuItem reinforcementLink = new JRadioButtonMenuItem("Toggle Reinforcement Link display");
+		reinforcementLink.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				displayReinforcementLink = !displayReinforcementLink;
+				updateDisplayedElements();
+			}
+		});
+		popupGeneral.add(reinforcementLink);
+		
+		JRadioButtonMenuItem savePos = new JRadioButtonMenuItem("Save elements position");
+		savePos.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				for(GCogniton gc : gCognitons)
+				{
+					gc.cogniton.posX = gc.X;
+					gc.cogniton.posY = gc.Y;
+				}
+				for(String gp : gPlan.keySet())
+				{
+					currentCognitiveScheme.planSavedPosition.put(gp, new Point(gPlan.get(gp).X,gPlan.get(gp).Y));
+				}
+				updateDisplayedElements();
+			}
+		});
+		popupGeneral.add(savePos);
+		
+		JRadioButtonMenuItem reinitPos = new JRadioButtonMenuItem("Set elements to default position");
+		reinitPos.addActionListener(new ActionListener () {
+			public void actionPerformed(ActionEvent e) {
+				for(GCogniton gc : gCognitons)
+				{
+					gc.cogniton.posX = null;
+					gc.cogniton.posY = null;
+				}
+				currentCognitiveScheme.planSavedPosition.clear();
+				displayCognitiveScheme();
+			}
+		});
+		popupGeneral.add(reinitPos);
+	
 		popupGeneral.show(this, (int)e.getX(), (int) e.getY());
 	}
 

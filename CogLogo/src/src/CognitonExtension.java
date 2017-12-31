@@ -19,6 +19,7 @@ package src;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -224,7 +225,16 @@ public class CognitonExtension extends DefaultClassManager {
 							if(line.split(" ").length > 1)
 								cs.DecisionMakerBias = Double.parseDouble(line.split(" ")[1]);
 							line = br.readLine();
-						}if (line != null && !line.equals("COG")&& line.equals("BREEDS")) {
+						}
+						if (line != null && !line.equals("COG")&& !line.equals("BREEDS") && line.equals("PLANPOS")) {
+							line = br.readLine();
+							while(line != null && !line.equals("BREEDS") && !line.equals("COG") && !line.equals("ENDCS"))
+							{
+								cs.planSavedPosition.put(line.split("=")[0], new Point(Integer.parseInt(line.split("=")[1].split(":")[0]),Integer.parseInt(line.split("=")[1].split(":")[1])));
+								line = br.readLine();
+							}
+						}
+						if (line != null && !line.equals("COG")&& line.equals("BREEDS")) {
 							line = br.readLine();
 							while (line != null && !line.equals("COG") && !line.equals("ENDCS")) {
 								cs.linkedBreeds.add(line);
@@ -244,6 +254,12 @@ public class CognitonExtension extends DefaultClassManager {
 							if (line != null && !line.equals("INFLUENCE")) 
 							{
 								curCog.startingValue = Double.parseDouble(line);
+								line = br.readLine();
+							}
+							if (line != null && !line.equals("INFLUENCE")) 
+							{
+								curCog.posX = Integer.parseInt(line.split(":")[0]);
+								curCog.posY = Integer.parseInt(line.split(":")[1]);
 								line = br.readLine();
 							}
 							if (line != null && line.equals("INFLUENCE")) 
@@ -291,6 +307,12 @@ public class CognitonExtension extends DefaultClassManager {
 									curCult.customColor = new Color(Integer.parseInt(br.readLine()));
 									if ((line = br.readLine()) != null && !line.equals("INFLUENCE")) {
 										curCult.startingValue = Double.parseDouble(line);
+										line = br.readLine();
+									}
+									if (line != null && !line.equals("INFLUENCE")) 
+									{
+										curCult.posX = Integer.parseInt(line.split(":")[0]);
+										curCult.posY = Integer.parseInt(line.split(":")[1]);
 										line = br.readLine();
 									}
 									if (line != null && line.equals("INFLUENCE")) {
@@ -351,6 +373,12 @@ public class CognitonExtension extends DefaultClassManager {
 				output.write("STARTCS\n");
 				output.write(cs.Name + "\n");
 				output.write(cs.myDecisionMaker + " " + cs.DecisionMakerBias+ "\n");
+				if(cs.planSavedPosition.size() > 0)
+				{
+					output.write("PLANPOS\n");
+					for(String p : cs.planSavedPosition.keySet())
+						output.write(p + "=" + (int)cs.planSavedPosition.get(p).getX() + ":" + (int)cs.planSavedPosition.get(p).getY() + "\n");
+				}
 				output.write("BREEDS\n");
 				for (String br : cs.linkedBreeds)
 					output.write(br + "\n");	
@@ -360,6 +388,8 @@ public class CognitonExtension extends DefaultClassManager {
 					output.write(Integer.toString(c.customColor.getRGB()) + "\n");
 					output.write(Boolean.toString(c.starting) + "\n");
 					output.write(Double.toString(c.startingValue) + "\n");
+					if(c.posX != null)
+						output.write(Integer.toString(c.posX)+":"+Integer.toString(c.posY)+ "\n");
 					output.write("INFLUENCE\n");
 					for (String inf : c.influencelinks.keySet())
 						output.write(inf + "=" + c.influencelinks.get(inf).toString() + "\n");
