@@ -1,7 +1,9 @@
 extensions [CogLogo]
 breed [humans human]
+
 humans-own [currentplan planTimer myLand landSpacing wheatStock toolStock toolState]
 patches-own [toolProduction wheatProduction]
+
 globals [ toolDemand wheatDemand villageToolStock villageWheatStock planDuration demandPerception startingVillageToolStock]
 
 to setup
@@ -55,15 +57,8 @@ end
 to goHuman
   regulatePerceptionCogniton
   regulateSpecialisationCogniton
+  checkStarvation
   coglogo:report-agent-data
-  if wheatStock < 0
-  [
-    set color grey
-    if myLand != nobody
-    [ask myLand [set pcolor gray]]
-    if starvation?
-    [die]
-  ]
   ifelse planTimer <= 0
   [
     set currentPlan coglogo:choose-next-plan
@@ -75,7 +70,6 @@ to goHuman
     set planTimer planTimer - 1
     run currentPlan
   ]
-
 end
 
 to regulateSpecialisationCogniton
@@ -104,6 +98,17 @@ to regulatePerceptionCogniton
   coglogo:set-cogniton-value "WheatNeed" ((800 ) - wheatStock)
 end
 
+to checkStarvation
+  if wheatStock < 0
+  [
+    set color grey
+    if myLand != nobody
+    [ask myLand [set pcolor gray]]
+    if starvation?
+    [die]
+  ]
+end
+
 to TradeWheatForTools
   ifelse villageToolStock > 1
   [
@@ -119,10 +124,7 @@ to TradeWheatForTools
      set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
      set planTimer 0
     ]
-    [
-      face patch 0 0
-      fd 1
-    ]
+    [goToVillage]
   ]
   [
     set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
@@ -149,10 +151,7 @@ to TradeToolsForWheat
         set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
         set toolDemand toolDemand +  (baseDemandIntensity * demandPerception)
       ]
-      [
-        goToVillage
-
-      ]
+      [goToVillage]
     ]
     [
       set wheatDemand wheatDemand + (baseDemandIntensity * ( - demandPerception))
@@ -222,24 +221,16 @@ end
 
 to goToLand
   face myLand
- ifelse distance myLand > 1
-  [
-      fd 1
-  ]
-  [
-    fd distance myLand
-  ]
+  ifelse distance myLand > 1
+  [fd 1]
+  [fd distance myLand]
 end
 
 to goToVillage
   face patch 0 0
   ifelse distance patch 0 0 > 1
-  [
-      fd 1
-  ]
-  [
-    fd distance patch 0 0
-  ]
+  [fd 1]
+  [fd distance patch 0 0]
 end
 
 to patchColorTool
@@ -250,7 +241,6 @@ to patchColorTool
   if toolProduction > 25500
   [set toolProduction 25500]
   set pcolor approximate-rgb (toolProduction / 100) 0 (wheatProduction / 100)
-  ;set pcolor approximate-rgb (toolProduction / 100) ((wheatProduction + toolProduction) / 200) (wheatProduction / 100)
 end
 
 to patchColorWheat
@@ -261,7 +251,6 @@ to patchColorWheat
   if wheatProduction > 25500
   [set wheatProduction 25500]
   set pcolor approximate-rgb (toolProduction / 100) 0 (wheatProduction / 100)
-;  set pcolor approximate-rgb (toolProduction / 100) ((wheatProduction + toolProduction) / 200) (wheatProduction / 100)
 end
 
 to wiggle

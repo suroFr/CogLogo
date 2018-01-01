@@ -112,10 +112,10 @@ deactivates a cogniton. All plans connected to this cogniton via dependancy link
 	==CULTURONS==
 	
 create-and-join-group <string groupName> <string roleName> :
-create an instance of <groupName> type and join it in the role <roleName>
+create an instance of <groupName> type and join it in the role <roleName>. When joining, the participation (involvement) value is set to 1.0.
 
 join-group <string groupName> <string roleName> <double groupId> : 
-join the instance <groupId> of type <groupName> in the role <roleName>
+join the instance <groupId> of type <groupName> in the role <roleName>. When joining, the participation (involvement) value is set to 1.0.
 
 add-to-participation <string groupName> <double val> :
 adds val to the corresponding group involvement.  

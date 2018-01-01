@@ -32,6 +32,7 @@ import src.myutils.GroupInstanceScrubber;
 
 public class CreateAndJoinGroup implements Command{
 
+	//Group - Role
 	public Syntax getSyntax(){
 		return SyntaxJ.commandSyntax(new int[] {Syntax.StringType(),Syntax.StringType()});
 	}
@@ -50,7 +51,7 @@ public class CreateAndJoinGroup implements Command{
 				try {
 					t.setVariable(myCogScheme.getGroupVariableOffset(breedName,args[0].getString()), myCogScheme.createAndJoinGroupInstance(args[0].getString(),args[1].getString(),t));
 					t.setVariable(myCogScheme.getGroupVariableOffset(breedName,args[0].getString())+1, args[1].getString());
-					t.setVariable(myCogScheme.getGroupVariableOffset(breedName,args[0].getString())+2, 0.0);
+					t.setVariable(myCogScheme.getGroupVariableOffset(breedName,args[0].getString())+2, 1.0);
 				} catch (LogoException | AgentException e) {
 					e.printStackTrace();
 				}
