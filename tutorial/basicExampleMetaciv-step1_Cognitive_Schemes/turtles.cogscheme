@@ -1,0 +1,27 @@
+STARTCS
+turtles
+MaximumWeight 1.0
+BREEDS
+COG
+wantRed
+-65485
+true
+0.0
+INFLUENCE
+goto-blue=-1.0
+goto-red=1.0
+DEPENDENCY
+goto-red
+REINFORCEMENT
+COG
+wantBlue
+-13408513
+true
+1.0
+INFLUENCE
+goto-blue=1.0
+goto-red=-1.0
+DEPENDENCY
+goto-blue
+REINFORCEMENT
+ENDCS
